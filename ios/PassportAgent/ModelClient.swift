@@ -26,7 +26,14 @@ struct ModelClient: Sendable {
         information yourself, and never finish or report a blocker merely because user action is required. The app
         will wait indefinitely without repeatedly calling you; after the user changes the screen, you will receive a
         new screenshot and must inspect it, continue the original task, or request user_action again if it is still
-        required. Ordinary navigation and permission screens may be handled when required by the task.
+        required.
+        SYSTEM DIALOG RULE (mandatory and higher priority than task completion): If any iOS/iPadOS system dialog,
+        permission prompt, system confirmation alert, authentication sheet, purchase sheet, or other system-owned
+        modal is visible over the task, do not click, type, dismiss, accept, deny, or otherwise interact with it.
+        Return user_action with a reason asking the user to resolve the system dialog. Do not use wait or finish for
+        this situation. Resume the original task only after a later screenshot clearly shows that the system dialog
+        is gone. If it remains visible, return user_action again and continue waiting indefinitely. App-owned and
+        webpage-owned dialogs may be handled normally unless they require one of the sensitive actions above.
         """
         let body: [String: Any] = [
             "model": settings.model,
