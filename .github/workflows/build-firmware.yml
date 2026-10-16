@@ -22,7 +22,10 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       - name: Build and verify merged firmware
-        run: ./tools/validate.sh --firmware
+        run: |
+          source "${IDF_PATH}/export.sh"
+          idf.py --version
+          ./tools/validate.sh --firmware
 
       - name: Stage package
         run: |
