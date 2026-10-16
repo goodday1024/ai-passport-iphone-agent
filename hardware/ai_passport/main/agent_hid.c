@@ -71,6 +71,10 @@ static volatile uint16_t s_conn = BLE_HS_CONN_HANDLE_NONE;
 static uint8_t s_own_addr_type;
 static const char *s_name = "AI Passport";
 
+static const ble_uuid128_t AGENT_SERVICE_UUID = BLE_UUID128_INIT(
+    0x00, 0x10, 0x7a, 0x6f, 0x1d, 0x6d, 0x5d, 0x9b,
+    0x28, 0x4e, 0x57, 0x6f, 0x01, 0x00, 0x5b, 0x8f);
+
 static int gap_event(struct ble_gap_event *event, void *arg);
 
 static void advertise(void)
@@ -91,11 +95,11 @@ static void advertise(void)
         ESP_LOGE(TAG, "adv fields failed: %d", rc);
         return;
     }
-    // iPhone 主动扫描时会取扫描响应;空响应会让 iOS 丢掉名字,设备在蓝牙列表里一闪而过。
+    // 扫描响应公布 Agent 服务，让 App 能按 UUID 找到设备；名称已在主广播中。
     struct ble_hs_adv_fields rsp = {
-        .name = (uint8_t *)s_name,
-        .name_len = (uint8_t)strlen(s_name),
-        .name_is_complete = 1,
+        .uuids128 = (ble_uuid128_t[]) { AGENT_SERVICE_UUID },
+        .num_uuids128 = 1,
+        .uuids128_is_complete = 1,
         .tx_pwr_lvl = BLE_HS_ADV_TX_PWR_LVL_AUTO,
         .tx_pwr_lvl_is_present = 1,
     };

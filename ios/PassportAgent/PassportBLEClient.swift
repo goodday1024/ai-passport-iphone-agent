@@ -24,8 +24,24 @@ final class PassportBLEClient: NSObject, @preconcurrency CBCentralManagerDelegat
 
     func connect() {
         guard central.state == .poweredOn else { return }
+        if let peripheral, peripheral.state == .connected {
+            attach(peripheral)
+            return
+        }
+        if let connected = central.retrieveConnectedPeripherals(withServices: [Self.serviceUUID]).first {
+            status = "正在复用系统连接"
+            attach(connected)
+            return
+        }
+        if let saved = UserDefaults.standard.string(forKey: "passport-peripheral-id"),
+           let id = UUID(uuidString: saved),
+           let known = central.retrievePeripherals(withIdentifiers: [id]).first {
+            status = "正在重新连接"
+            attach(known)
+            return
+        }
         status = "正在搜索"
-        central.scanForPeripherals(withServices: nil)
+        central.scanForPeripherals(withServices: [Self.serviceUUID])
     }
 
     func send(_ command: String) async throws -> String {
@@ -66,15 +82,21 @@ final class PassportBLEClient: NSObject, @preconcurrency CBCentralManagerDelegat
                         advertisementData: [String: Any], rssi RSSI: NSNumber) {
         guard peripheral.name == "AI Passport" || (advertisementData[CBAdvertisementDataLocalNameKey] as? String) == "AI Passport" else { return }
         central.stopScan()
-        self.peripheral = peripheral
-        peripheral.delegate = self
         status = "正在连接"
-        central.connect(peripheral)
+        UserDefaults.standard.set(peripheral.identifier.uuidString, forKey: "passport-peripheral-id")
+        attach(peripheral)
     }
 
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
+        UserDefaults.standard.set(peripheral.identifier.uuidString, forKey: "passport-peripheral-id")
         status = "正在发现服务"
         peripheral.discoverServices([Self.serviceUUID])
+    }
+
+    func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
+        status = "连接失败，重新搜索"
+        self.peripheral = nil
+        central.scanForPeripherals(withServices: [Self.serviceUUID])
     }
 
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral,
@@ -95,8 +117,30 @@ final class PassportBLEClient: NSObject, @preconcurrency CBCentralManagerDelegat
         guard error == nil else { status = "服务发现失败"; return }
         commandCharacteristic = service.characteristics?.first { $0.uuid == Self.commandUUID }
         replyCharacteristic = service.characteristics?.first { $0.uuid == Self.replyUUID }
-        if let replyCharacteristic { peripheral.setNotifyValue(true, for: replyCharacteristic) }
-        status = commandCharacteristic == nil || replyCharacteristic == nil ? "控制服务不完整" : "已连接"
+        guard commandCharacteristic != nil, let replyCharacteristic else {
+            status = "控制服务不完整"
+            return
+        }
+        status = "正在验证加密连接"
+        peripheral.setNotifyValue(true, for: replyCharacteristic)
+    }
+
+    func peripheral(_ peripheral: CBPeripheral, didUpdateNotificationStateFor characteristic: CBCharacteristic,
+                    error: Error?) {
+        guard characteristic.uuid == Self.replyUUID else { return }
+        guard error == nil, characteristic.isNotifying else {
+            status = "控制通道启用失败"
+            return
+        }
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                let reply = try await send("ping")
+                status = reply == "ok" ? "已连接" : "握手失败：\(reply)"
+            } catch {
+                status = "握手失败：\(error.localizedDescription)"
+            }
+        }
     }
 
     func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
@@ -111,6 +155,20 @@ final class PassportBLEClient: NSObject, @preconcurrency CBCentralManagerDelegat
         guard let pending else { return }
         self.pending = nil
         pending.resume(with: result)
+    }
+
+    private func attach(_ peripheral: CBPeripheral) {
+        self.peripheral = peripheral
+        peripheral.delegate = self
+        switch peripheral.state {
+        case .connected:
+            status = "正在发现服务"
+            peripheral.discoverServices([Self.serviceUUID])
+        case .connecting:
+            status = "正在连接"
+        default:
+            central.connect(peripheral)
+        }
     }
 }
 
