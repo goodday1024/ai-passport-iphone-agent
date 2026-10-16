@@ -12,12 +12,16 @@ struct ModelClient: Sendable {
     func next(task: String, imageJPEG: Data, history: [String]) async throws -> ModelStep {
         guard let url = URL(string: settings.endpoint), url.scheme == "https" else { throw ModelError.invalidEndpoint }
         let prompt = """
-        You control an iPhone/iPad using a relative BLE mouse and HID keyboard. Complete this task: \(task)
-        Choose exactly one next action. Recent actions: \(history.suffix(10).joined(separator: "; "))
-        The screenshot is 768 by 1366 pixels. Prefer tap with dx=x and dy=y absolute screenshot coordinates.
-        Return JSON only: {"observation":"...","action":{"action":"device_home|tap|move|click|press|release|scroll|type|key|wait|finish", ...}}
-        tap uses absolute dx/dy screenshot pixels; move uses relative units; scroll uses vertical/horizontal; wait uses milliseconds.
-        Do not act on passwords, payments, account deletion, or permissions; finish with an explanation instead.
+        You control an iPhone/iPad with a calibrated pointer and HID keyboard. Complete this task: \(task)
+        Choose exactly one next action. Recent observations and outcomes: \(history.suffix(12).joined(separator: "; "))
+        For tap, use dx and dy as normalized coordinates from 0 to 1000 across the visible screenshot,
+        with (0,0) at the top-left and (1000,1000) at the bottom-right. Never emit raw mouse move,
+        click, press, or release actions; every visual click must use tap so calibration and correction run.
+        Return JSON only: {"observation":"...","action":{"action":"device_home|tap|scroll|type|key|wait|finish", ...}}
+        scroll uses vertical/horizontal; wait uses milliseconds. Use wait when the screen is transitioning.
+        Do not finish merely because one attempt was uncertain. Finish only after the screenshot visibly confirms
+        success, or after explaining a genuine blocker. Never enter passwords or payment data, approve purchases,
+        or delete accounts. Ordinary navigation and permission screens may be handled when required by the task.
         """
         let body: [String: Any] = [
             "model": settings.model,
@@ -41,4 +45,14 @@ struct ModelClient: Sendable {
 }
 
 private struct ChatResponse: Decodable { struct Choice: Decodable { struct Message: Decodable { let content: String }; let message: Message }; let choices: [Choice] }
-enum ModelError: Error { case invalidEndpoint, http(String), empty }
+enum ModelError: LocalizedError {
+    case invalidEndpoint, http(String), empty
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidEndpoint: "API 地址无效"
+        case let .http(message): "模型请求失败：\(message)"
+        case .empty: "模型返回为空"
+        }
+    }
+}

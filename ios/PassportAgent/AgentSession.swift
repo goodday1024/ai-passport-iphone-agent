@@ -38,7 +38,6 @@ final class AgentSession {
         guard !isRunning else { return }
         guard !currentAPIKey.isEmpty else { status = "请先配置 API Key"; return }
         isRunning = true; status = "请确认共享整个屏幕"; events.removeAll()
-        pointer.invalidate()
         capture.presentPicker()
         runTask = Task { [weak self] in await self?.run(task: task) }
     }
@@ -52,6 +51,7 @@ final class AgentSession {
     private func run(task: String) async {
         defer { runTask = nil; isRunning = false }
         let deadline = ContinuousClock.now.advanced(by: .seconds(600))
+        var consecutiveFailures = 0
         for _ in 0..<100 {
             if Task.isCancelled { return }
             guard ContinuousClock.now < deadline else { break }
@@ -69,12 +69,20 @@ final class AgentSession {
                     return
                 case let .wait(ms): try await Task.sleep(for: .milliseconds(min(max(ms, 100), 5000)))
                 case let .tap(x, y):
-                    let px = min(max(x, 0), 767)
-                    let py = min(max(y, 0), 1365)
+                    let px = min(max(x, 0), 1000)
+                    let py = min(max(y, 0), 1000)
                     status = "校准并点击：\(px), \(py)"
-                    try await pointer.tap(pixelX: px, pixelY: py)
+                    do {
+                        try await pointer.tap(pixelX: px, pixelY: py, imageWidth: 1000, imageHeight: 1000)
+                    } catch {
+                        pointer.invalidate()
+                        events.append("首次定位失败，正在重新校准：\(error.localizedDescription)")
+                        try await pointer.tap(pixelX: px, pixelY: py, imageWidth: 1000, imageHeight: 1000)
+                    }
                     events.append("精确点击 \(px),\(py) → ok")
                     try await Task.sleep(for: .milliseconds(650))
+                case .move, .click, .press, .release:
+                    throw AgentError.unsupportedRawPointerAction
                 default:
                     guard let command = step.action.passportCommand else { continue }
                     status = "执行：\(command)"
@@ -83,11 +91,18 @@ final class AgentSession {
                     guard reply == "ok" else { throw AgentError.command(reply) }
                     try await Task.sleep(for: .milliseconds(650))
                 }
+                consecutiveFailures = 0
             } catch {
                 if Task.isCancelled { return }
-                status = "任务暂停：\(error.localizedDescription)"
-                await finishTask()
-                return
+                consecutiveFailures += 1
+                events.append("第 \(consecutiveFailures) 次错误：\(error.localizedDescription)")
+                if consecutiveFailures < 4 {
+                    status = "暂时失败，正在重试（\(consecutiveFailures)/3）"
+                    try? await Task.sleep(for: .milliseconds(900))
+                    continue
+                }
+                status = "连续失败，任务已停止：\(error.localizedDescription)"
+                await finishTask(); return
             }
         }
         status = "达到安全限制，任务已停止"; isRunning = false
@@ -100,4 +115,13 @@ final class AgentSession {
     }
 }
 
-enum AgentError: Error { case command(String) }
+enum AgentError: LocalizedError {
+    case command(String), unsupportedRawPointerAction
+
+    var errorDescription: String? {
+        switch self {
+        case let .command(reply): "Passport 指令失败：\(reply)"
+        case .unsupportedRawPointerAction: "模型返回了未经校准的鼠标动作"
+        }
+    }
+}

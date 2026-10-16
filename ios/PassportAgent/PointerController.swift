@@ -16,21 +16,22 @@ final class PointerController {
 
     func calibrate() async throws {
         try await command("home")
-        var samples: [(units: Int, point: PointerVision.Point)] = []
+        var samples: [(units: Double, point: PointerVision.Point)] = []
         var previous = 0
-        for units in [150, 350] {
+        for units in [120, 240, 360] {
             try await command("move \(units - previous) \(units - previous)")
             try await Task.sleep(for: .milliseconds(350))
             guard let point = try await locatePointer(expectedShift: 0.025) else {
                 span = nil
                 throw PointerError.pointerNotFound
             }
-            samples.append((units, point)); previous = units
+            samples.append((Double(units), point)); previous = units
         }
-        let dx = samples[1].point.x - samples[0].point.x
-        let dy = samples[1].point.y - samples[0].point.y
-        guard dx > 0.05, dy > 0.05 else { throw PointerError.invalidCalibration }
-        let measured = (width: 200 / dx, height: 200 / dy)
+        guard let width = fittedSpan(samples.map { ($0.units, $0.point.x) }),
+              let height = fittedSpan(samples.map { ($0.units, $0.point.y) }) else {
+            throw PointerError.invalidCalibration
+        }
+        let measured = (width: width, height: height)
         guard measured.width > 250, measured.width < 4000,
               measured.height > 250, measured.height < 5000 else { throw PointerError.invalidCalibration }
         span = measured
@@ -46,14 +47,15 @@ final class PointerController {
         try await command("home")
         try await command("move \(Int((target.x * span.width).rounded())) \(Int((target.y * span.height).rounded()))")
         try await Task.sleep(for: .milliseconds(350))
-        if let actual = try await locatePointer(expectedShift: Double(nudge) / span.width, near: target) {
-            let correctionX = Int(((target.x - actual.x) * span.width).rounded())
-            let correctionY = Int(((target.y - actual.y) * span.height).rounded())
-            if abs(correctionX) > 3 || abs(correctionY) > 3 {
-                guard abs(correctionX) < Int(span.width * 0.12),
-                      abs(correctionY) < Int(span.height * 0.12) else { throw PointerError.unreliableReading }
-                try await command("move \(correctionX) \(correctionY)")
-            }
+        guard let actual = try await locatePointer(expectedShift: Double(nudge) / span.width, near: target) else {
+            throw PointerError.pointerNotFound
+        }
+        let correctionX = Int(((target.x - actual.x) * span.width).rounded())
+        let correctionY = Int(((target.y - actual.y) * span.height).rounded())
+        if abs(correctionX) > 3 || abs(correctionY) > 3 {
+            guard abs(correctionX) < Int(span.width * 0.12),
+                  abs(correctionY) < Int(span.height * 0.12) else { throw PointerError.unreliableReading }
+            try await command("move \(correctionX) \(correctionY)")
         }
         try await command("click")
     }
@@ -70,6 +72,15 @@ final class PointerController {
     private func command(_ value: String) async throws {
         let reply = try await passport.send(value)
         guard reply == "ok" else { throw AgentError.command(reply) }
+    }
+
+    private func fittedSpan(_ samples: [(units: Double, fraction: Double)]) -> Double? {
+        let meanUnits = samples.map(\.units).reduce(0, +) / Double(samples.count)
+        let meanFraction = samples.map(\.fraction).reduce(0, +) / Double(samples.count)
+        let covariance = samples.reduce(0) { $0 + ($1.units - meanUnits) * ($1.fraction - meanFraction) }
+        let variance = samples.reduce(0) { $0 + pow($1.fraction - meanFraction, 2) }
+        guard variance > 0.002 else { return nil }
+        return covariance / variance
     }
 }
 

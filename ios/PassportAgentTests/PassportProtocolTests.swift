@@ -16,9 +16,9 @@ final class PassportProtocolTests: XCTestCase {
     }
 
     func testTapUsesAbsoluteCoordinates() throws {
-        let json = #"{"observation":"button","action":{"action":"tap","dx":320,"dy":640}}"#.data(using: .utf8)!
+        let json = #"{"observation":"button","action":{"action":"tap","dx":417,"dy":469}}"#.data(using: .utf8)!
         let step = try JSONDecoder().decode(ModelStep.self, from: json)
-        XCTAssertEqual(step.action, .tap(x: 320, y: 640))
+        XCTAssertEqual(step.action, .tap(x: 417, y: 469))
         XCTAssertNil(step.action.passportCommand)
     }
 }
