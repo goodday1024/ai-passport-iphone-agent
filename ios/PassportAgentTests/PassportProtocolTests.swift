@@ -9,10 +9,19 @@ final class PassportProtocolTests: XCTestCase {
         XCTAssertEqual(step.action.passportCommand, "move 12 -8")
     }
 
-    func testTypeRemovesNewlines() throws {
+    func testTypeUsesDedicatedInputPath() throws {
         let json = #"{"observation":"field","action":{"action":"type","text":"hello\nworld"}}"#.data(using: .utf8)!
         let step = try JSONDecoder().decode(ModelStep.self, from: json)
-        XCTAssertEqual(step.action.passportCommand, "type hello world")
+        XCTAssertNil(step.action.passportCommand)
+        XCTAssertEqual(TextInputPlan.make(for: "hello\nworld"), .hid("hello world"))
+    }
+
+    func testChineseTextUsesLocalPasteboardPath() {
+        XCTAssertEqual(TextInputPlan.make(for: "你好，世界"), .paste("你好，世界"))
+    }
+
+    func testMixedTextUsesLocalPasteboardPath() {
+        XCTAssertEqual(TextInputPlan.make(for: "订单 123"), .paste("订单 123"))
     }
 
     func testTapUsesAbsoluteCoordinates() throws {

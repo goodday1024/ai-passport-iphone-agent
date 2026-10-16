@@ -46,7 +46,7 @@ enum AgentAction: Codable, Equatable, Sendable {
         case .press: "press"
         case .release: "release"
         case let .scroll(v, h): "scroll \(v) \(h)"
-        case let .type(text): "type \(text.replacingOccurrences(of: "\n", with: " "))"
+        case .type: nil
         case let .key(key): "key \(key)"
         case .wait, .userAction, .finish: nil
         }
@@ -59,3 +59,15 @@ struct ModelStep: Decodable, Sendable {
 }
 
 enum ProtocolError: Error { case invalidCommand }
+
+enum TextInputPlan: Equatable, Sendable {
+    case hid(String)
+    case paste(String)
+
+    static func make(for text: String) -> TextInputPlan {
+        if text.unicodeScalars.allSatisfy(\.isASCII) {
+            return .hid(text.replacingOccurrences(of: "\n", with: " "))
+        }
+        return .paste(text)
+    }
+}

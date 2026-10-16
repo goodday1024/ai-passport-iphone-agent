@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import UIKit
 
 @MainActor
 @Observable
@@ -86,6 +87,9 @@ final class AgentSession {
                     }
                     events.append("精确点击 \(px),\(py) → ok")
                     try await Task.sleep(for: .milliseconds(650))
+                case let .type(text):
+                    try await enterText(text)
+                    try await Task.sleep(for: .milliseconds(650))
                 case .move, .click, .press, .release:
                     throw AgentError.unsupportedRawPointerAction
                 default:
@@ -127,6 +131,24 @@ final class AgentSession {
                 return
             }
         }
+    }
+
+    private func enterText(_ text: String) async throws {
+        let reply: String
+        switch TextInputPlan.make(for: text) {
+        case let .hid(ascii):
+            status = "正在输入文本"
+            reply = try await passport.send("type \(ascii)")
+            events.append("键盘输入 \(text.count) 个字符 → \(reply)")
+        case let .paste(unicode):
+            status = "正在粘贴中文文本"
+            UIPasteboard.general.string = unicode
+            // Give the system pasteboard time to publish before the HID shortcut.
+            try await Task.sleep(for: .milliseconds(500))
+            reply = try await passport.send("key cmd+v")
+            events.append("剪贴板粘贴 \(text.count) 个字符 → \(reply)")
+        }
+        guard reply == "ok" else { throw AgentError.command(reply) }
     }
 
     private func finishTask() async {
