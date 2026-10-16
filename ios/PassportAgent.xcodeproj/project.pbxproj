@@ -14,8 +14,10 @@
 		7761E544C5562B8D43A22F76 /* CoreBluetooth.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 30B589EE2D9445FCD116E886 /* CoreBluetooth.framework */; };
 		78468420E02F8325F5EF85BE /* PassportProtocolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 529D81848B42594B20EB8355 /* PassportProtocolTests.swift */; };
 		93CF99815B96D109FCFF4448 /* AgentSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7D667C4EE44CE692FC2E047 /* AgentSession.swift */; };
+		982542E76D89D6DC6E9B9133 /* PointerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9AF20D229E6EF4C5674CADC /* PointerController.swift */; };
 		C0007986398D0C9CF74B1991 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73F9FD193A13731509180B3B /* KeychainStore.swift */; };
 		C4ACA0E3C34F31CB4D766085 /* PassportProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B30689BFB5C2D514B00F587 /* PassportProtocol.swift */; };
+		C773481879A669F52CEEF557 /* PointerVision.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DFA04760C3EA4484DF87C9D /* PointerVision.swift */; };
 		D4875773CDEF49191D6FFD45 /* ScreenCaptureKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C0DF6DA7A097BD615BC0B9CC /* ScreenCaptureKit.framework */; };
 		D7BB5888E8E2805268C19BFC /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E958E9073DCE8F465EBBCD82 /* ContentView.swift */; };
 		F60D04E28A74C7CE93DBF441 /* ScreenCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 659D67DD224046998078E74C /* ScreenCaptureService.swift */; };
@@ -39,9 +41,11 @@
 		5ACB60265AB9EB9B356ED8A6 /* PassportAgentTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PassportAgentTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		60127319DA78522BF08F61DD /* PassportAgent.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PassportAgent.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		659D67DD224046998078E74C /* ScreenCaptureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenCaptureService.swift; sourceTree = "<group>"; };
+		6DFA04760C3EA4484DF87C9D /* PointerVision.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointerVision.swift; sourceTree = "<group>"; };
 		7031025045BA24794E5E4A28 /* PassportAgentApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PassportAgentApp.swift; sourceTree = "<group>"; };
 		73F9FD193A13731509180B3B /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		B8ADEDCFF0A4FCF6B76F2815 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
+		B9AF20D229E6EF4C5674CADC /* PointerController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointerController.swift; sourceTree = "<group>"; };
 		C0DF6DA7A097BD615BC0B9CC /* ScreenCaptureKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ScreenCaptureKit.framework; path = System/Library/Frameworks/ScreenCaptureKit.framework; sourceTree = SDKROOT; };
 		C593E1DC149AD013D847020B /* PassportBLEClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PassportBLEClient.swift; sourceTree = "<group>"; };
 		CF1E82C3B1F294E4BC3EF1F0 /* ModelClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelClient.swift; sourceTree = "<group>"; };
@@ -93,6 +97,8 @@
 				7031025045BA24794E5E4A28 /* PassportAgentApp.swift */,
 				C593E1DC149AD013D847020B /* PassportBLEClient.swift */,
 				2B30689BFB5C2D514B00F587 /* PassportProtocol.swift */,
+				B9AF20D229E6EF4C5674CADC /* PointerController.swift */,
+				6DFA04760C3EA4484DF87C9D /* PointerVision.swift */,
 				659D67DD224046998078E74C /* ScreenCaptureService.swift */,
 			);
 			path = PassportAgent;
@@ -213,6 +219,8 @@
 				10ED606CBAD4E0F9D3D7C5B0 /* PassportAgentApp.swift in Sources */,
 				28659EC9E2914023CB1BBEC1 /* PassportBLEClient.swift in Sources */,
 				C4ACA0E3C34F31CB4D766085 /* PassportProtocol.swift in Sources */,
+				982542E76D89D6DC6E9B9133 /* PointerController.swift in Sources */,
+				C773481879A669F52CEEF557 /* PointerVision.swift in Sources */,
 				F60D04E28A74C7CE93DBF441 /* ScreenCaptureService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

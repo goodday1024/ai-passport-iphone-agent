@@ -4,8 +4,9 @@ import Observation
 @MainActor
 @Observable
 final class AgentSession {
-    private let passport = PassportBLEClient()
-    private let capture = ScreenCaptureService()
+    private let passport: PassportBLEClient
+    private let capture: ScreenCaptureService
+    private let pointer: PointerController
     private var runTask: Task<Void, Never>?
     var settings: ModelSettings
     var status = "待机"
@@ -16,6 +17,11 @@ final class AgentSession {
     var currentAPIKey: String { KeychainStore.loadAPIKey() }
 
     init() {
+        let passport = PassportBLEClient()
+        let capture = ScreenCaptureService()
+        self.passport = passport
+        self.capture = capture
+        pointer = PointerController(passport: passport, capture: capture)
         settings = (try? UserDefaults.standard.data(forKey: "model-settings").flatMap { try JSONDecoder().decode(ModelSettings.self, from: $0) }) ?? ModelSettings()
         capture.onStatus = { [weak self] value in Task { @MainActor in self?.captureStatus = value } }
     }
@@ -32,6 +38,7 @@ final class AgentSession {
         guard !isRunning else { return }
         guard !currentAPIKey.isEmpty else { status = "请先配置 API Key"; return }
         isRunning = true; status = "请确认共享整个屏幕"; events.removeAll()
+        pointer.invalidate()
         capture.presentPicker()
         runTask = Task { [weak self] in await self?.run(task: task) }
     }
@@ -64,12 +71,9 @@ final class AgentSession {
                 case let .tap(x, y):
                     let px = min(max(x, 0), 767)
                     let py = min(max(y, 0), 1365)
-                    status = "点击：\(px), \(py)"
-                    for command in ["home", "move \(px) \(py)", "click"] {
-                        let reply = try await passport.send(command)
-                        events.append("\(command) → \(reply)")
-                        guard reply == "ok" else { throw AgentError.command(reply) }
-                    }
+                    status = "校准并点击：\(px), \(py)"
+                    try await pointer.tap(pixelX: px, pixelY: py)
+                    events.append("精确点击 \(px),\(py) → ok")
                     try await Task.sleep(for: .milliseconds(650))
                 default:
                     guard let command = step.action.passportCommand else { continue }
