@@ -28,4 +28,26 @@ final class PassportProtocolTests: XCTestCase {
         XCTAssertEqual(step.action, .userAction("请确认支付"))
         XCTAssertNil(step.action.passportCommand)
     }
+
+    func testPointerCalibrationCompensatesForOffset() {
+        let calibration = PointerCalibration(
+            width: 500,
+            height: 1000,
+            xSamples: [.init(commanded: 0.3, landed: 0.34), .init(commanded: 0.7, landed: 0.74)],
+            ySamples: [.init(commanded: 0.3, landed: 0.27), .init(commanded: 0.7, landed: 0.67)]
+        )
+        let result = calibration.units(x: 0.5, y: 0.5)
+        XCTAssertLessThanOrEqual(abs(result.x - 230), 1)
+        XCTAssertLessThanOrEqual(abs(result.y - 530), 1)
+    }
+
+    func testPointerCalibrationRejectsImplausibleFit() {
+        let calibration = PointerCalibration(
+            width: 500,
+            height: 1000,
+            xSamples: [.init(commanded: 0.2, landed: 0.2), .init(commanded: 0.8, landed: 1.7)],
+            ySamples: []
+        )
+        XCTAssertEqual(calibration.units(x: 0.5, y: 0.5).x, 250)
+    }
 }

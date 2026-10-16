@@ -7,6 +7,7 @@ final class ScreenCaptureService: NSObject, SCContentSharingPickerObserver, SCSt
     private let context = CIContext(options: [.cacheIntermediates: false])
     private var stream: SCStream?
     private var latestJPEG: Data?
+    private var frameSequence: UInt64 = 0
     var onStatus: (@Sendable (String) -> Void)?
 
     override init() {
@@ -34,6 +35,10 @@ final class ScreenCaptureService: NSObject, SCContentSharingPickerObserver, SCSt
     }
 
     func frame() -> Data? { queue.sync { latestJPEG } }
+
+    func snapshot() -> (data: Data, sequence: UInt64)? {
+        queue.sync { latestJPEG.map { ($0, frameSequence) } }
+    }
 
     func contentSharingPicker(_ picker: SCContentSharingPicker, didCancelFor stream: SCStream?) {
         Task { @MainActor in picker.isActive = false }
@@ -73,6 +78,7 @@ final class ScreenCaptureService: NSObject, SCContentSharingPickerObserver, SCSt
               let jpeg = context.jpegRepresentation(of: image, colorSpace: colorSpace,
                                                     options: [kCGImageDestinationLossyCompressionQuality as CIImageRepresentationOption: 0.55]) else { return }
         latestJPEG = jpeg
+        frameSequence &+= 1
     }
 
     func stream(_ stream: SCStream, didStopWithError error: any Error) {
