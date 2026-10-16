@@ -59,7 +59,6 @@ static lv_obj_t *s_paused;
 static lv_timer_t *s_timer;
 
 static const char *s_ble_name;
-static bool s_wifi_configured;
 static volatile int s_soc = -1;
 static volatile int64_t s_wake_at;
 static bool s_dim;
@@ -127,7 +126,7 @@ static void build_live(void)
     s_live = screen();
     header(s_live, "iPhone Agent", true);
     status_card(s_live, PHONE_Y, LV_SYMBOL_BLUETOOTH "  Phone", &s_phone_state, &s_phone_sub);
-    status_card(s_live, LINK_Y, LV_SYMBOL_SHUFFLE "  Server", &s_link_state, &s_link_sub);
+    status_card(s_live, LINK_Y, LV_SYMBOL_SHUFFLE "  Agent App", &s_link_state, &s_link_sub);
 
     lv_obj_t *act = card(s_live, ACT_Y, ACT_H);
     s_count = label(act, FONT_TEXT, COL_MUTED, "Activity");
@@ -172,8 +171,8 @@ static void build_setup(void)
     snprintf(text, sizeof(text),
              "1. iPhone: turn on\n    AssistiveTouch\n\n"
              "2. iPhone Bluetooth: pair\n    \"%s\"\n\n"
-             "3. Computer: start server,\n    run tools/usb_link.py\n\n"
-             "4. Mirror to \"iPhone\n    Agent\", then calibrate",
+             "3. Open Passport Agent\n    and connect this device\n\n"
+             "4. Start a task and allow\n    full-screen sharing",
              s_ble_name);
     lv_obj_t *l = label(c, FONT_TEXT, COL_TEXT, text);
     lv_obj_set_width(l, CARD_W - 2 * CARD_PAD);
@@ -214,18 +213,15 @@ static void refresh_phone(agent_hid_state_t hid)
 
 static void refresh_link(const agent_snapshot_t *s)
 {
-    if (s->link[AGENT_LINK_USB] == AGENT_LINK_UP) {
+    if (s->link[AGENT_LINK_BLE] == AGENT_LINK_UP) {
+        set_state(s_link_state, COL_GREEN, LV_SYMBOL_BLUETOOTH "  App linked");
+        lv_label_set_text(s_link_sub, "Commands come from this phone");
+    } else if (s->link[AGENT_LINK_USB] == AGENT_LINK_UP) {
         set_state(s_link_state, COL_GREEN, LV_SYMBOL_USB "  USB linked");
-        lv_label_set_text(s_link_sub, "Agent server online");
-    } else if (s->link[AGENT_LINK_WIFI] == AGENT_LINK_UP) {
-        set_state(s_link_state, COL_GREEN, LV_SYMBOL_WIFI "  Wi-Fi linked");
-        lv_label_set_text(s_link_sub, s->wifi_detail);
-    } else if (s->link[AGENT_LINK_WIFI] == AGENT_LINK_WAITING) {
-        set_state(s_link_state, COL_AMBER, "Waiting for server");
-        lv_label_set_text(s_link_sub, s->wifi_detail);
+        lv_label_set_text(s_link_sub, "Local diagnostics active");
     } else {
-        set_state(s_link_state, COL_AMBER, "Waiting for server");
-        lv_label_set_text(s_link_sub, s_wifi_configured ? "Wi-Fi not started" : "Run tools/usb_link.py");
+        set_state(s_link_state, COL_AMBER, "Waiting for app");
+        lv_label_set_text(s_link_sub, "Open Passport Agent on phone");
     }
 }
 
@@ -318,13 +314,12 @@ static void check_glyphs(void)
     if (missing == 0) ESP_LOGI(TAG, "font ok: Latin + symbols + GB2312 Chinese");
 }
 
-void agent_ui_start(const char *ble_name, bool wifi_configured)
+void agent_ui_start(const char *ble_name)
 {
     s_text_font = lv_font_montserrat_14;
     s_text_font.fallback = &agent_cjk_14;
     check_glyphs();
     s_ble_name = ble_name;
-    s_wifi_configured = wifi_configured;
     build_live();
     build_setup();
     agent_ui_wake();

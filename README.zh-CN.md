@@ -2,6 +2,9 @@
 
 # AI Passport iPhone Agent
 
+> 新增：[`ios/`](ios/README.zh_CN.md) 提供 iOS/iPadOS 27+ 原生版本，屏幕采集、模型请求和 Passport 控制都在手机或
+> iPad 上运行，不依赖电脑。下文仍保留原有电脑服务器版本的说明。
+
 **让 AI 操作一部真实的 iPhone：只要一个 FoloToy AI Passport，不需要开发者账号、不需要 Xcode、不用越狱。**
 
 [English](README.md) · 简体中文

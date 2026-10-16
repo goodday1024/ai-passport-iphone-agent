@@ -12,7 +12,6 @@
 //   UP/DOWN 单击 在 Live / Setup 视图间切换
 //   UP   长按   忘记已配对的 iPhone(仅 Setup 视图,防误触)
 #include "agent_bridge.h"
-#include "agent_config.h"
 #include "agent_hid.h"
 #include "agent_link.h"
 #include "agent_ui.h"
@@ -96,8 +95,6 @@ void app_main(void)
     }
     bool battery_ok = bsp_battery_init() == ESP_OK;
 
-    agent_config_t cfg;
-    agent_config_load(&cfg);
     agent_bridge_init();
 
     // 先起 USB 链路:即使 BLE 或 Wi-Fi 失败,也能通过串口查看日志、修改配置。
@@ -105,11 +102,8 @@ void app_main(void)
     if (err != ESP_OK) ESP_LOGE(TAG, "USB link: %s", esp_err_to_name(err));
     err = agent_hid_start(CONFIG_AGENT_BLE_NAME);
     if (err != ESP_OK) ESP_LOGE(TAG, "BLE HID: %s", esp_err_to_name(err));
-    err = agent_link_wifi_start(&cfg);
-    if (err != ESP_OK) ESP_LOGE(TAG, "Wi-Fi link: %s", esp_err_to_name(err));
-
     if (bsp_lvgl_lock(1000)) {
-        agent_ui_start(CONFIG_AGENT_BLE_NAME, cfg.ssid[0] != '\0');
+        agent_ui_start(CONFIG_AGENT_BLE_NAME);
         bsp_lvgl_unlock();
     }
 

@@ -7,6 +7,7 @@ idf_component_register(
          "agent_keymap.c"
          "agent_link_usb.c"
          "agent_link_wifi.c"
+         "agent_link_ble.c"
          "agent_text.c"
          "agent_ui.c"
          "../assets/fonts/agent_cjk_14.c"

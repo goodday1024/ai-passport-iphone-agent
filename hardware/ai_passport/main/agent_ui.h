@@ -10,7 +10,7 @@
 #include <stdbool.h>
 
 // 创建界面与刷新定时器。调用方须持有 bsp_lvgl_lock()。
-void agent_ui_start(const char *ble_name, bool wifi_configured);
+void agent_ui_start(const char *ble_name);
 
 // 切换 Live / Setup 视图。调用方须持有 bsp_lvgl_lock()。
 void agent_ui_show_next(void);

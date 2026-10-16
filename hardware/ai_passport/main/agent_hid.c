@@ -1,6 +1,7 @@
 #include "agent_hid.h"
 
 #include "agent_exec.h"
+#include "agent_link_ble.h"
 
 #include <string.h>
 
@@ -151,6 +152,7 @@ static int gap_event(struct ble_gap_event *event, void *arg)
     case BLE_GAP_EVENT_DISCONNECT:
         ESP_LOGI(TAG, "phone disconnected: reason=%d", event->disconnect.reason);
         s_conn = BLE_HS_CONN_HANDLE_NONE;
+        agent_link_ble_disconnected();
         advertise();
         return 0;
     case BLE_GAP_EVENT_ENC_CHANGE:
@@ -240,10 +242,17 @@ esp_err_t agent_hid_start(const char *name)
         ESP_LOGE(TAG, "esp_hidd_dev_init: %s", esp_err_to_name(err));
         return err;
     }
+    err = agent_link_ble_register();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "BLE command service: %s", esp_err_to_name(err));
+        return err;
+    }
     ble_svc_gap_device_name_set(s_name);
     ble_svc_gap_device_appearance_set(APPEARANCE_HID);
     ble_store_config_init();
     nimble_port_freertos_init(host_task);
+    err = agent_link_ble_start();
+    if (err != ESP_OK) ESP_LOGE(TAG, "BLE command task: %s", esp_err_to_name(err));
     return ESP_OK;
 }
 

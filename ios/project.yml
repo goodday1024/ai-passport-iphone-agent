@@ -1,0 +1,39 @@
+name: PassportAgent
+options:
+  bundleIdPrefix: cn.folotoy
+  deploymentTarget:
+    iOS: "27.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    DEVELOPMENT_TEAM: ""
+targets:
+  PassportAgent:
+    type: application
+    platform: iOS
+    info:
+      path: PassportAgent/Info.plist
+      properties:
+        CFBundleDisplayName: Passport Agent
+        NSBluetoothAlwaysUsageDescription: 用于向 AI Passport 发送鼠标和键盘操作指令。
+        UILaunchScreen: {}
+        UIBackgroundModes:
+          - screen-capture
+          - bluetooth-central
+    sources: [PassportAgent]
+    dependencies:
+      - sdk: ScreenCaptureKit.framework
+      - sdk: CoreBluetooth.framework
+      - sdk: Security.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: cn.folotoy.PassportAgent
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        CODE_SIGN_STYLE: Automatic
+  PassportAgentTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [PassportAgentTests]
+    dependencies:
+      - target: PassportAgent

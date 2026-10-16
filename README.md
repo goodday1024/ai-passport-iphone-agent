@@ -2,6 +2,9 @@
 
 # AI Passport iPhone Agent
 
+> New: [`ios/`](ios/README.md) contains the iOS/iPadOS 27+ native agent, which captures the screen, calls the model,
+> and controls AI Passport without a computer. The original computer-hosted workflow remains documented below.
+
 **Let an AI model use a real iPhone with a FoloToy AI Passport. No Mac, no developer account, no jailbreak.**
 
 English · [简体中文](README.zh-CN.md)

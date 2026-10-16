@@ -12,6 +12,7 @@
 typedef enum {
     AGENT_LINK_USB = 0,
     AGENT_LINK_WIFI,
+    AGENT_LINK_BLE,
     AGENT_LINK_COUNT,
 } agent_link_t;
 

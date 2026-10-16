@@ -1,0 +1,63 @@
+name: Build AI Passport firmware
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "ai-passport-v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.5.3
+    defaults:
+      run:
+        shell: bash
+        working-directory: hardware/ai_passport
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Build and verify merged firmware
+        run: ./tools/validate.sh --firmware
+
+      - name: Stage package
+        run: |
+          mkdir -p dist
+          cp build/FoloToy-AI-Passport-full.bin dist/ai-passport-iphone-agent-full.bin
+          sha256sum dist/ai-passport-iphone-agent-full.bin > dist/SHA256SUMS
+
+      - name: Upload firmware package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ai-passport-iphone-agent-firmware
+          path: |
+            hardware/ai_passport/dist/ai-passport-iphone-agent-full.bin
+            hardware/ai_passport/dist/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download firmware package
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: ai-passport-iphone-agent-firmware
+          path: dist
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8 # v2.3.2
+        with:
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            dist/ai-passport-iphone-agent-full.bin
+            dist/SHA256SUMS
