@@ -20,12 +20,14 @@ final class ScreenCaptureService: NSObject, SCContentSharingPickerObserver, SCSt
     }
 
     @MainActor func presentPicker() {
-        SCContentSharingPicker.shared.present()
+        let picker = SCContentSharingPicker.shared
+        picker.isActive = true
+        picker.present()
     }
 
     func stop() async {
-        guard let stream else { return }
-        try? await stream.stopCapture()
+        await MainActor.run { SCContentSharingPicker.shared.isActive = false }
+        if let stream { try? await stream.stopCapture() }
         self.stream = nil
         queue.sync { latestJPEG = nil }
         onStatus?("未共享")
@@ -33,13 +35,22 @@ final class ScreenCaptureService: NSObject, SCContentSharingPickerObserver, SCSt
 
     func frame() -> Data? { queue.sync { latestJPEG } }
 
-    func contentSharingPicker(_ picker: SCContentSharingPicker, didCancelFor stream: SCStream?) { onStatus?("用户取消") }
-
-    func contentSharingPicker(_ picker: SCContentSharingPicker, didUpdateWith filter: SCContentFilter, for stream: SCStream?) {
-        Task { await start(filter: filter) }
+    func contentSharingPicker(_ picker: SCContentSharingPicker, didCancelFor stream: SCStream?) {
+        Task { @MainActor in picker.isActive = false }
+        onStatus?("用户取消")
     }
 
-    func contentSharingPickerStartDidFailWithError(_ error: any Error) { onStatus?("启动失败：\(error.localizedDescription)") }
+    func contentSharingPicker(_ picker: SCContentSharingPicker, didUpdateWith filter: SCContentFilter, for stream: SCStream?) {
+        Task {
+            await MainActor.run { picker.isActive = false }
+            await start(filter: filter)
+        }
+    }
+
+    func contentSharingPickerStartDidFailWithError(_ error: any Error) {
+        Task { @MainActor in SCContentSharingPicker.shared.isActive = false }
+        onStatus?("启动失败：\(error.localizedDescription)")
+    }
 
     private func start(filter: SCContentFilter) async {
         if stream != nil { await stop() }
@@ -64,5 +75,9 @@ final class ScreenCaptureService: NSObject, SCContentSharingPickerObserver, SCSt
         latestJPEG = jpeg
     }
 
-    func stream(_ stream: SCStream, didStopWithError error: any Error) { onStatus?("已停止：\(error.localizedDescription)") }
+    func stream(_ stream: SCStream, didStopWithError error: any Error) {
+        self.stream = nil
+        queue.sync { latestJPEG = nil }
+        onStatus?("已停止：\(error.localizedDescription)")
+    }
 }

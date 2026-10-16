@@ -43,9 +43,11 @@ final class AgentSession {
     }
 
     private func run(task: String) async {
+        defer { runTask = nil; isRunning = false }
         let deadline = ContinuousClock.now.advanced(by: .seconds(600))
         for _ in 0..<100 {
-            guard !Task.isCancelled, ContinuousClock.now < deadline else { break }
+            if Task.isCancelled { return }
+            guard ContinuousClock.now < deadline else { break }
             guard captureStatus == "共享中", let frame = capture.frame() else {
                 try? await Task.sleep(for: .milliseconds(300)); continue
             }
@@ -54,7 +56,10 @@ final class AgentSession {
                 let step = try await ModelClient(settings: settings, apiKey: currentAPIKey).next(task: task, imageJPEG: frame, history: events)
                 events.append(step.observation)
                 switch step.action {
-                case let .finish(summary): status = summary; isRunning = false; return
+                case let .finish(summary):
+                    status = summary
+                    await finishTask()
+                    return
                 case let .wait(ms): try await Task.sleep(for: .milliseconds(min(max(ms, 100), 5000)))
                 case let .tap(x, y):
                     let px = min(max(x, 0), 767)
@@ -75,10 +80,19 @@ final class AgentSession {
                     try await Task.sleep(for: .milliseconds(650))
                 }
             } catch {
-                status = "任务暂停：\(error.localizedDescription)"; isRunning = false; return
+                if Task.isCancelled { return }
+                status = "任务暂停：\(error.localizedDescription)"
+                await finishTask()
+                return
             }
         }
         status = "达到安全限制，任务已停止"; isRunning = false
+        await finishTask()
+    }
+
+    private func finishTask() async {
+        _ = try? await passport.send("release")
+        await capture.stop()
     }
 }
 
