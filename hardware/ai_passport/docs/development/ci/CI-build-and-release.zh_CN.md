@@ -6,6 +6,10 @@
 
 本仓库提供一套基于 GitHub Actions 的自动构建与发布流水线，用于在打 tag 时自动编译固件并发布 Release。
 
+同一工作流还会在 GitHub 的 `xcode-27` runner 上关闭代码签名并构建 iOS 27 原生 App，打包为
+`PassportAgent-unsigned.ipa`，同时上传 SHA-256 校验文件。该 IPA 必须使用合适的 Apple 证书和
+provisioning profile 重新签名后，才能安装到普通设备。
+
 本文件与 `.github/workflows/build-firmware.yml` 一同维护，工作流行为变化时必须同步更新。
 
 ## 触发条件
