@@ -35,6 +35,26 @@ struct PointerVision: Sendable {
                      y: Double(sumY) / Double(count * a.height))
     }
 
+    static func meaningfullyChanged(before: Data, after: Data) -> Bool {
+        guard let a = raster(before), let b = raster(after),
+              a.width == b.width, a.height == b.height else { return false }
+        let top = Int(Double(a.height) * 0.06)
+        let count = (a.height - top) * a.width
+        guard count > 0 else { return false }
+        var changed = 0
+        var totalDifference = 0
+        for y in top..<a.height {
+            for x in 0..<a.width {
+                let difference = abs(Int(a.pixels[y * a.width + x]) - Int(b.pixels[y * b.width + x]))
+                totalDifference += difference
+                if difference > 28 { changed += 1 }
+            }
+        }
+        // Ignore cursor blinking and clock/status-bar updates, but notice dialogs,
+        // keyboards, navigation and confirmation screens.
+        return changed >= max(120, count / 200) || totalDifference / count >= 4
+    }
+
     private struct Raster { let width: Int; let height: Int; let pixels: [UInt8] }
 
     private static func raster(_ data: Data) -> Raster? {

@@ -21,4 +21,11 @@ final class PassportProtocolTests: XCTestCase {
         XCTAssertEqual(step.action, .tap(x: 417, y: 469))
         XCTAssertNil(step.action.passportCommand)
     }
+
+    func testSensitiveActionRequestsUserAndHasNoPassportCommand() throws {
+        let json = #"{"observation":"Payment confirmation is visible","action":{"action":"user_action","reason":"请确认支付"}}"#.data(using: .utf8)!
+        let step = try JSONDecoder().decode(ModelStep.self, from: json)
+        XCTAssertEqual(step.action, .userAction("请确认支付"))
+        XCTAssertNil(step.action.passportCommand)
+    }
 }

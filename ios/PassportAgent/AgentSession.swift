@@ -50,7 +50,7 @@ final class AgentSession {
 
     private func run(task: String) async {
         defer { runTask = nil; isRunning = false }
-        let deadline = ContinuousClock.now.advanced(by: .seconds(600))
+        var deadline = ContinuousClock.now.advanced(by: .seconds(600))
         var consecutiveFailures = 0
         for _ in 0..<100 {
             if Task.isCancelled { return }
@@ -68,6 +68,11 @@ final class AgentSession {
                     await finishTask()
                     return
                 case let .wait(ms): try await Task.sleep(for: .milliseconds(min(max(ms, 100), 5000)))
+                case let .userAction(reason):
+                    await waitForUserAction(from: frame, reason: reason)
+                    if Task.isCancelled { return }
+                    // User interaction time never consumes the task execution allowance.
+                    deadline = ContinuousClock.now.advanced(by: .seconds(600))
                 case let .tap(x, y):
                     let px = min(max(x, 0), 1000)
                     let py = min(max(y, 0), 1000)
@@ -107,6 +112,21 @@ final class AgentSession {
         }
         status = "达到安全限制，任务已停止"; isRunning = false
         await finishTask()
+    }
+
+    private func waitForUserAction(from baseline: Data, reason: String) async {
+        status = "等待用户操作：\(reason)"
+        events.append("需要用户接管：\(reason)。保持任务运行并等待界面变化。")
+        while !Task.isCancelled {
+            try? await Task.sleep(for: .milliseconds(600))
+            guard let current = capture.frame() else { continue }
+            if PointerVision.meaningfullyChanged(before: baseline, after: current) {
+                status = "检测到用户操作，继续任务"
+                events.append("检测到界面变化，重新检查任务进度。")
+                try? await Task.sleep(for: .milliseconds(500))
+                return
+            }
+        }
     }
 
     private func finishTask() async {

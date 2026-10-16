@@ -11,9 +11,10 @@ enum AgentAction: Codable, Equatable, Sendable {
     case type(String)
     case key(String)
     case wait(milliseconds: Int)
+    case userAction(String)
     case finish(String)
 
-    private enum CodingKeys: String, CodingKey { case action, dx, dy, vertical, horizontal, text, key, milliseconds, summary }
+    private enum CodingKeys: String, CodingKey { case action, dx, dy, vertical, horizontal, text, key, milliseconds, reason, summary }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -28,6 +29,7 @@ enum AgentAction: Codable, Equatable, Sendable {
         case "type": self = .type(try c.decode(String.self, forKey: .text))
         case "key": self = .key(try c.decode(String.self, forKey: .key))
         case "wait": self = .wait(milliseconds: try c.decode(Int.self, forKey: .milliseconds))
+        case "user_action": self = .userAction(try c.decodeIfPresent(String.self, forKey: .reason) ?? "请在设备上完成敏感操作")
         case "finish": self = .finish(try c.decodeIfPresent(String.self, forKey: .summary) ?? "完成")
         default: throw DecodingError.dataCorruptedError(forKey: .action, in: c, debugDescription: "Unsupported action")
         }
@@ -46,7 +48,7 @@ enum AgentAction: Codable, Equatable, Sendable {
         case let .scroll(v, h): "scroll \(v) \(h)"
         case let .type(text): "type \(text.replacingOccurrences(of: "\n", with: " "))"
         case let .key(key): "key \(key)"
-        case .wait, .finish: nil
+        case .wait, .userAction, .finish: nil
         }
     }
 }
