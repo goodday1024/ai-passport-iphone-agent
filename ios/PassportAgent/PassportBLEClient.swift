@@ -46,6 +46,22 @@ final class PassportBLEClient: NSObject, @preconcurrency CBCentralManagerDelegat
         if central.state == .poweredOn { connect() } else { status = "蓝牙不可用" }
     }
 
+    func centralManager(_ central: CBCentralManager, willRestoreState dict: [String: Any]) {
+        guard let restored = dict[CBCentralManagerRestoredStatePeripheralsKey] as? [CBPeripheral],
+              let passport = restored.first(where: { $0.name == "AI Passport" }) ?? restored.first else {
+            return
+        }
+        peripheral = passport
+        passport.delegate = self
+        if passport.state == .connected {
+            status = "正在恢复连接"
+            passport.discoverServices([Self.serviceUUID])
+        } else {
+            status = "正在重新连接"
+            central.connect(passport)
+        }
+    }
+
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral,
                         advertisementData: [String: Any], rssi RSSI: NSNumber) {
         guard peripheral.name == "AI Passport" || (advertisementData[CBAdvertisementDataLocalNameKey] as? String) == "AI Passport" else { return }
