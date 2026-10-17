@@ -118,16 +118,47 @@ final class AgentSession {
         await finishTask()
     }
 
-    private func waitForUserAction(from baseline: Data, reason: String) async {
+    private func waitForUserAction(from requestFrame: Data, reason: String) async {
         status = "等待用户操作：\(reason)"
         events.append("需要用户接管：\(reason)。保持任务运行并等待界面变化。")
+        guard let entered = capture.snapshot() else { return }
+
+        // The model may take several seconds to answer. If the user already cleared
+        // the dialog during that time, do not wait against the stale request frame.
+        if PointerVision.meaningfullyChanged(before: requestFrame, after: entered.data) {
+            status = "操作期间画面已变化，等待画面稳定"
+            await waitForStableScreen(startingWith: entered)
+            events.append("模型响应期间界面已变化，使用稳定后的新画面继续。")
+            return
+        }
+
+        let baseline = entered.data
         while !Task.isCancelled {
             try? await Task.sleep(for: .milliseconds(600))
-            guard let current = capture.frame() else { continue }
-            if PointerVision.meaningfullyChanged(before: baseline, after: current) {
-                status = "检测到用户操作，继续任务"
-                events.append("检测到界面变化，重新检查任务进度。")
-                try? await Task.sleep(for: .milliseconds(500))
+            guard let current = capture.snapshot() else { continue }
+            if PointerVision.meaningfullyChanged(before: baseline, after: current.data) {
+                status = "检测到用户操作，等待画面稳定"
+                await waitForStableScreen(startingWith: current)
+                events.append("用户操作后界面已稳定，重新检查任务进度。")
+                return
+            }
+        }
+    }
+
+    private func waitForStableScreen(startingWith initial: (data: Data, sequence: UInt64)) async {
+        var previous = initial
+        var quietSince = ContinuousClock.now
+        let minimum = ContinuousClock.now.advanced(by: .milliseconds(700))
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        while !Task.isCancelled, ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(250))
+            guard let current = capture.snapshot(), current.sequence > previous.sequence else { continue }
+            if PointerVision.meaningfullyChanged(before: previous.data, after: current.data) {
+                quietSince = ContinuousClock.now
+            }
+            previous = current
+            if ContinuousClock.now >= minimum,
+               ContinuousClock.now - quietSince >= .milliseconds(800) {
                 return
             }
         }
